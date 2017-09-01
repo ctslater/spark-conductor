@@ -13,20 +13,37 @@ class ConductorTest extends UnitSpec {
     conductor.state.partitionsByJobId.size shouldBe 0
   }
 
-  "Conductor" should "Accept new partitions from a job" in {
-    val conductor = new Conductor
+  "Conductor" should "Update state with new partitions" in {
+    // This internal reads state and should be removed.
     val job = JobId(0)
     val partitions = List("partition1", "partition2")
+    val conductor = new Conductor
     conductor.refreshPartitionsForJob(job, partitions)
-    conductor.state.partitionsByJobId.get(job).size shouldBe 1
+    val partitionsForJob = conductor.state.partitionsByJobId.get(job)
+    partitionsForJob.size shouldBe 1
   }
 
-  "Conductor" should "Prioritize top partitions" in {
-    val conductor = new Conductor
+  "Conductor" should "Return partitions after update" in {
+    // This internal reads state and should be removed.
     val job = JobId(0)
     val partitions = List("partition1", "partition2")
+    val conductor = new Conductor
     conductor.refreshPartitionsForJob(job, partitions)
-    conductor.getPriorityPartitions().files.size shouldBe 2
+    conductor.getPriorityPartitions().files.size shouldBe 0
+  }
+
+  "Conductor" should "Return most common partition" in {
+    // This internal reads state and should be removed.
+    val job = JobId(0)
+    val partitions = List("partition1", "partition2")
+    val conductor = new Conductor
+    conductor.refreshPartitionsForJob(JobId(0),
+                                      List("partition1", "partition2"))
+    conductor.refreshPartitionsForJob(JobId(1),
+                                      List("partition1", "partition3"))
+    conductor.getPriorityPartitions().files should contain ("partition1")
+    conductor.getPriorityPartitions().files should not contain ("partition2")
+    conductor.getPriorityPartitions().files should not contain ("partition3")
   }
 
 }

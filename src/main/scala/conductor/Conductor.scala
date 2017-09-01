@@ -1,7 +1,6 @@
 
 package conductor
 
-
 import scala.collection.mutable.HashMap
 
 case class PriorityPartitions(files: List[String])
@@ -27,7 +26,12 @@ class Conductor {
   }
 
   def getPriorityPartitions(): PriorityPartitions = {
-    PriorityPartitions(state.partitionsByJobId.values.head.partitions)
+    val allPartitions = state.partitionsByJobId.values.map(_.partitions).flatten
+    val incidenceCounts: Map[String, Integer] = allPartitions.groupBy(identity).mapValues(_.size)
+    val sortedCounts = incidenceCounts.toList.sortBy(_._2).filter(_._2 > 1)
+
+    PriorityPartitions(sortedCounts.map(_._1))
+
   }
 
 }
