@@ -9,7 +9,9 @@ case class PartitionsRequiredForJob(jobId: JobId,
                                     partitions: List[String],
                                     lastRefreshed: String)
 
-case class JobId(jobIdNumber: Integer)
+case class JobId(jobIdNumber: Int)
+
+case class JobUpdate(job_id: Int, partitions: List[String])
 
 class SystemState {
   val partitionsByJobId: HashMap[JobId, PartitionsRequiredForJob] = HashMap()
@@ -32,6 +34,11 @@ class Conductor {
 
     PriorityPartitions(sortedCounts.map(_._1))
 
+  }
+
+  def getAllPartitions(): Seq[String] = {
+    val allPartitions = state.partitionsByJobId.values.map(_.partitions).flatten
+    allPartitions.toSeq
   }
 
 }

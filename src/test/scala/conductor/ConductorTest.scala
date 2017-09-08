@@ -66,24 +66,48 @@ class ConductorTest extends UnitSpec {
 
 class ConductorHttpTest extends UnitSpec with ScalatestRouteTest with ConductorService {
 
-  "ConductorApi" should "Accept job updates" in {
+    val jsonJob1 = ByteString(
+      s"""
+         |{
+         |    "job_id": 1,
+         |    "partitions": ["part1","part2","part3"]
+         |}
+      """.stripMargin)
 
-      val jsonRequest = ByteString(
-        s"""
-           |{
-           |    "job_id": "7",
-           |    "partitions": {"part1","part2","part3"}
-           |}
-        """.stripMargin)
+    val jsonJob2 = ByteString(
+      s"""
+         |{
+         |    "job_id": 2,
+         |    "partitions": ["part3","part4","part5"]
+         |}
+      """.stripMargin)
+
+  "ConductorApi" should "Accept a first job" in {
+      val postRequest = HttpRequest(
+        HttpMethods.POST,
+        uri = "/partitions",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonJob1))
+
+      postRequest ~> route ~> check {
+        conductor.getAllPartitions() should contain ("part1")
+    }
+  }
+
+  "ConductorApi" should "Accept a second job" in {
+      HttpRequest(
+        HttpMethods.POST,
+        uri = "/partitions",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonJob1))
 
       val postRequest = HttpRequest(
         HttpMethods.POST,
         uri = "/partitions",
-        entity = HttpEntity(MediaTypes.`application/json`, jsonRequest))
+        entity = HttpEntity(MediaTypes.`application/json`, jsonJob2))
 
       postRequest ~> route ~> check {
-           status.isSuccess() shouldEqual true
+        conductor.getAllPartitions() should contain ("part4")
+        conductor.getPriorityPartitions().files shouldBe List("part3")
     }
-
   }
+
 }

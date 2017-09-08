@@ -20,12 +20,15 @@ trait ConductorService {
   val executionContext = system.dispatcher
 
   implicit val priorityTasksFormat = jsonFormat1(PriorityPartitions)
+  implicit val jobUpdateFormat = jsonFormat2(JobUpdate)
 
   val conductor = new Conductor
+  /*
   conductor.refreshPartitionsForJob(JobId(0),
                                     List("partition1", "partition2"))
   conductor.refreshPartitionsForJob(JobId(1),
                                     List("partition1", "partition3"))
+  */
 
   val route =
     path("hello") {
@@ -37,15 +40,18 @@ trait ConductorService {
       get {
         complete(conductor.getPriorityPartitions)
       }
-    } /* ~
-    path("updatePartitions") {
-      put {
+    }  ~
+    path("partitions") {
+      post {
         decodeRequest {
-          entity(as[JobUpdate]) {  update => conductor.refreshPartitionsForJob(update) }
+          entity(as[JobUpdate]) {  update => complete {
+            conductor.refreshPartitionsForJob(JobId(update.job_id), update.partitions)
+            s"Success"
+            }
+          }
         }
       }
-    } */
-
+    }
 }
 
 class ConductorServer(implicit val system:ActorSystem,
