@@ -12,44 +12,37 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import spray.json.DefaultJsonProtocol._
 
 
+case class PriorityPartitionsResponse(files: Seq[String])
+case class JobUpdate(job_id: Int, partitions: List[String])
+
 trait ConductorService {
 
   implicit val system:ActorSystem
   implicit val materializer:ActorMaterializer
   // needed for the future flatMap/onComplete in the end
+  // Gave some problems when marked as implicit.
   val executionContext = system.dispatcher
 
-  implicit val priorityTasksFormat = jsonFormat1(PriorityPartitions)
+  implicit val priorityPartitionsRespFormat = jsonFormat1(PriorityPartitionsResponse)
   implicit val jobUpdateFormat = jsonFormat2(JobUpdate)
 
   val conductor = new Conductor
-  /*
-  conductor.refreshPartitionsForJob(JobId(0),
-                                    List("partition1", "partition2"))
-  conductor.refreshPartitionsForJob(JobId(1),
-                                    List("partition1", "partition3"))
-  */
 
   val route =
-    path("hello") {
-      get {
-        complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "<h1>Say hello to akka-http</h1>"))
-      }
-    } ~
-    path("getPartitions") {
-      get {
-        complete(conductor.getPriorityPartitions)
-      }
-    }  ~
     path("partitions") {
       post {
         decodeRequest {
           entity(as[JobUpdate]) {  update => complete {
             conductor.refreshPartitionsForJob(JobId(update.job_id), update.partitions)
-            s"Success"
+            "Success"
             }
           }
         }
+      }
+    } ~
+    path("priority") {
+      get {
+        complete(PriorityPartitionsResponse(conductor.getPriorityPartitions))
       }
     }
 }
