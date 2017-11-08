@@ -13,7 +13,7 @@ import spray.json.DefaultJsonProtocol._
 
 
 case class PriorityPartitionsResponse(files: Seq[String])
-case class JobUpdate(job_id: Int, partitions: List[String])
+case class JobUpdate(job_id: String, partitions: List[String])
 
 trait ConductorService {
 
@@ -28,6 +28,11 @@ trait ConductorService {
 
   val conductor = new Conductor
 
+  /*
+  conductor.refreshPartitionsForJob(JobId(1),
+          List("file:///Users/ctslater/spark_experiments/data/object_lightcurves.parquet/part-00001-a6b99f67-a061-450e-ac59-ae5441cdfc63.snappy.parquet"))
+
+  */
   val route =
     path("partitions") {
       post {

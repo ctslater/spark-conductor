@@ -6,7 +6,7 @@ import scala.collection.mutable.HashMap
 case class PartitionsRequiredForJob(jobId: JobId,
                                     partitions: List[String],
                                     lastRefreshed: String)
-case class JobId(jobIdNumber: Int)
+case class JobId(jobIdNumber: String)
 
 
 class SystemState {
@@ -24,11 +24,17 @@ class Conductor {
   }
 
   def getPriorityPartitions(): Seq[String] = {
+
+    val maxPartitionsToReturn = 10
+
+    def partName[A,B](x: Tuple2[A,B]): A = x._1
+    def counts[A,B](x: Tuple2[A,B]): B = x._2
+
     val allPartitions = state.partitionsByJobId.values.map(_.partitions).flatten
     val incidenceCounts: Map[String, Integer] = allPartitions.groupBy(identity).mapValues(_.size)
-    val sortedCounts = incidenceCounts.toList.sortBy(_._2).filter(_._2 > 1)
+    val sortedCounts = incidenceCounts.toList.sortBy(counts).filter(counts(_) > 1)
 
-    sortedCounts.map(_._1).toSeq
+    sortedCounts.map(partName).toSeq.slice(0, maxPartitionsToReturn)
 
   }
 

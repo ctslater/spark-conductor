@@ -22,7 +22,7 @@ class ConductorTest extends UnitSpec {
 
   "Conductor" should "update state with new partitions" in {
     // This internal reads state and should be removed.
-    val job = JobId(0)
+    val job = JobId("0")
     val partitions = List("partition1", "partition2")
     val conductor = new Conductor
     conductor.refreshPartitionsForJob(job, partitions)
@@ -32,7 +32,7 @@ class ConductorTest extends UnitSpec {
 
   "Conductor" should "return partitions after update" in {
     // This internal reads state and should be removed.
-    val job = JobId(0)
+    val job = JobId("0")
     val partitions = List("partition1", "partition2")
     val conductor = new Conductor
     conductor.refreshPartitionsForJob(job, partitions)
@@ -42,9 +42,9 @@ class ConductorTest extends UnitSpec {
   "Conductor" should "return most common partition" in {
     // This internal reads state and should be removed.
     val conductor = new Conductor
-    conductor.refreshPartitionsForJob(JobId(0),
+    conductor.refreshPartitionsForJob(JobId("0"),
                                       List("partition1", "partition2"))
-    conductor.refreshPartitionsForJob(JobId(1),
+    conductor.refreshPartitionsForJob(JobId("1"),
                                       List("partition1", "partition3"))
     conductor.getPriorityPartitions() should contain ("partition1")
     conductor.getPriorityPartitions() should not contain ("partition2")
@@ -54,12 +54,22 @@ class ConductorTest extends UnitSpec {
   "Conductor" should "accept job updates" in {
     // This internal reads state and should be removed.
     val conductor = new Conductor
-    conductor.refreshPartitionsForJob(JobId(0),
+    conductor.refreshPartitionsForJob(JobId("0"),
                                       List("partition1", "partition2"))
-    conductor.refreshPartitionsForJob(JobId(1),
+    conductor.refreshPartitionsForJob(JobId("1"),
                                       List("partition1", "partition2"))
-    conductor.refreshPartitionsForJob(JobId(0), List("partition2"))
+    conductor.refreshPartitionsForJob(JobId("0"), List("partition2"))
     conductor.getPriorityPartitions() shouldBe List("partition2")
+    }
+
+  "Conductor" should "only return a small number of priority partitions" in {
+    // This internal reads state and should be removed.
+    val conductor = new Conductor
+    conductor.refreshPartitionsForJob(JobId("0"),
+                                      Range(0,30).map(n => s"part$n").toList)
+    conductor.refreshPartitionsForJob(JobId("1"),
+                                      Range(0,30).map(n => s"part$n").toList)
+    conductor.getPriorityPartitions().size should be < 15
     }
 
 }
@@ -69,7 +79,7 @@ class ConductorHttpTest extends UnitSpec with ScalatestRouteTest with ConductorS
   val jsonJob1 = ByteString(
     s"""
        |{
-       |    "job_id": 1,
+       |    "job_id": "1",
        |    "partitions": ["part1","part2","part3"]
        |}
     """.stripMargin)
@@ -77,7 +87,7 @@ class ConductorHttpTest extends UnitSpec with ScalatestRouteTest with ConductorS
   val jsonJob2 = ByteString(
     s"""
        |{
-       |    "job_id": 2,
+       |    "job_id": "2",
        |    "partitions": ["part3","part4","part5"]
        |}
     """.stripMargin)
