@@ -11,6 +11,7 @@ import scala.io.StdIn
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import spray.json.DefaultJsonProtocol._
 
+import java.time.LocalDateTime
 
 case class PriorityPartitionsResponse(files: Seq[String])
 case class JobUpdate(job_id: String, partitions: List[String])
@@ -38,7 +39,8 @@ trait ConductorService {
       post {
         decodeRequest {
           entity(as[JobUpdate]) {  update => complete {
-            conductor.refreshPartitionsForJob(JobId(update.job_id), update.partitions)
+            conductor.refreshPartitionsForJob(JobId(update.job_id), update.partitions,
+                    LocalDateTime.now())
             "Success"
             }
           }
@@ -47,7 +49,8 @@ trait ConductorService {
     } ~
     path("priority") {
       get {
-        complete(PriorityPartitionsResponse(conductor.getPriorityPartitions))
+        complete(PriorityPartitionsResponse(
+                    conductor.getPriorityPartitions(LocalDateTime.now())))
       }
     }
 }

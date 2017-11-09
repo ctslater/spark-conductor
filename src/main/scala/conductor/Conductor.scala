@@ -2,10 +2,11 @@
 package conductor
 
 import scala.collection.mutable.HashMap
+import java.time.{LocalDateTime, Duration}
 
 case class PartitionsRequiredForJob(jobId: JobId,
                                     partitions: List[String],
-                                    lastRefreshed: String)
+                                    lastRefreshed: LocalDateTime)
 case class JobId(jobIdNumber: String)
 
 
@@ -16,19 +17,24 @@ class SystemState {
 class Conductor {
   val state = new SystemState
 
-  def refreshPartitionsForJob(job: JobId, partitions: List[String]): Unit = {
+  def refreshPartitionsForJob(job: JobId, partitions: List[String], datetime: LocalDateTime): Unit = {
 
     state.partitionsByJobId.update(job, PartitionsRequiredForJob(job,
                                                                  partitions,
-                                                                 "datetime"))
+                                                                 datetime))
   }
 
-  def getPriorityPartitions(): Seq[String] = {
+  def getPriorityPartitions(now: LocalDateTime): Seq[String] = {
 
     val maxPartitionsToReturn = 10
+    val jobExpirationTime = Duration.ofMinutes(5)
 
     def partName[A,B](x: Tuple2[A,B]): A = x._1
     def counts[A,B](x: Tuple2[A,B]): B = x._2
+
+    state.partitionsByJobId.retain(
+            (id: JobId, partitions: PartitionsRequiredForJob) =>
+            Duration.between(partitions.lastRefreshed, now).compareTo(jobExpirationTime) <= 0)
 
     val allPartitions = state.partitionsByJobId.values.map(_.partitions).flatten
     val incidenceCounts: Map[String, Integer] = allPartitions.groupBy(identity).mapValues(_.size)

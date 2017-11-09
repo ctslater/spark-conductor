@@ -12,6 +12,8 @@ import Directives._
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import spray.json.DefaultJsonProtocol._
 
+import java.time.LocalDateTime
+
 abstract class UnitSpec extends FlatSpec with OptionValues with Matchers
 
 class ConductorTest extends UnitSpec {
@@ -25,52 +27,77 @@ class ConductorTest extends UnitSpec {
     val job = JobId("0")
     val partitions = List("partition1", "partition2")
     val conductor = new Conductor
-    conductor.refreshPartitionsForJob(job, partitions)
+    val time = LocalDateTime.of(2017, 1, 1, 1, 1)
+    conductor.refreshPartitionsForJob(job, partitions, time)
     val partitionsForJob = conductor.state.partitionsByJobId.get(job)
     partitionsForJob.size shouldBe 1
   }
 
   "Conductor" should "return partitions after update" in {
-    // This internal reads state and should be removed.
     val job = JobId("0")
     val partitions = List("partition1", "partition2")
     val conductor = new Conductor
-    conductor.refreshPartitionsForJob(job, partitions)
-    conductor.getPriorityPartitions().size shouldBe 0
+    val time = LocalDateTime.of(2017, 1, 1, 1, 1)
+    conductor.refreshPartitionsForJob(job, partitions, time)
+    conductor.getPriorityPartitions(time).size shouldBe 0
   }
 
   "Conductor" should "return most common partition" in {
-    // This internal reads state and should be removed.
     val conductor = new Conductor
+    val time = LocalDateTime.of(2017, 1, 1, 1, 1)
     conductor.refreshPartitionsForJob(JobId("0"),
-                                      List("partition1", "partition2"))
+                                      List("partition1", "partition2"), time)
     conductor.refreshPartitionsForJob(JobId("1"),
-                                      List("partition1", "partition3"))
-    conductor.getPriorityPartitions() should contain ("partition1")
-    conductor.getPriorityPartitions() should not contain ("partition2")
-    conductor.getPriorityPartitions() should not contain ("partition3")
+                                      List("partition1", "partition3"), time)
+    conductor.getPriorityPartitions(time) should contain ("partition1")
+    conductor.getPriorityPartitions(time) should not contain ("partition2")
+    conductor.getPriorityPartitions(time) should not contain ("partition3")
   }
 
   "Conductor" should "accept job updates" in {
-    // This internal reads state and should be removed.
     val conductor = new Conductor
+    val time = LocalDateTime.of(2017, 1, 1, 1, 1)
     conductor.refreshPartitionsForJob(JobId("0"),
-                                      List("partition1", "partition2"))
+                                      List("partition1", "partition2"), time)
     conductor.refreshPartitionsForJob(JobId("1"),
-                                      List("partition1", "partition2"))
-    conductor.refreshPartitionsForJob(JobId("0"), List("partition2"))
-    conductor.getPriorityPartitions() shouldBe List("partition2")
+                                      List("partition1", "partition2"), time)
+    conductor.refreshPartitionsForJob(JobId("0"), List("partition2"), time)
+    conductor.getPriorityPartitions(time) shouldBe List("partition2")
     }
 
   "Conductor" should "only return a small number of priority partitions" in {
-    // This internal reads state and should be removed.
+    val conductor = new Conductor
+    val time = LocalDateTime.of(2017, 1, 1, 1, 1)
+    conductor.refreshPartitionsForJob(JobId("0"),
+                                      Range(0,30).map(n => s"part$n").toList,
+                                      time)
+    conductor.refreshPartitionsForJob(JobId("1"),
+                                      Range(0,30).map(n => s"part$n").toList,
+                                      time)
+    conductor.getPriorityPartitions(time).size should be < 15
+    }
+
+  "Conductor" should "return recent partitions" in {
     val conductor = new Conductor
     conductor.refreshPartitionsForJob(JobId("0"),
-                                      Range(0,30).map(n => s"part$n").toList)
+                                      List("partition1"),
+                                      LocalDateTime.of(2017, 1, 1, 1, 1))
     conductor.refreshPartitionsForJob(JobId("1"),
-                                      Range(0,30).map(n => s"part$n").toList)
-    conductor.getPriorityPartitions().size should be < 15
-    }
+                                      List("partition1"),
+                                      LocalDateTime.of(2017, 1, 1, 1, 1))
+    conductor.getPriorityPartitions(LocalDateTime.of(2017, 1, 1, 1, 2)) shouldBe List("partition1")
+  }
+
+  "Conductor" should "not return outdated partitions" in {
+    val conductor = new Conductor
+    conductor.refreshPartitionsForJob(JobId("0"),
+                                      List("partition1"),
+                                      LocalDateTime.of(2017, 1, 1, 1, 1))
+    conductor.refreshPartitionsForJob(JobId("1"),
+                                      List("partition1"),
+                                      LocalDateTime.of(2017, 1, 1, 1, 1))
+    conductor.getPriorityPartitions(LocalDateTime.of(2017, 1, 1, 1, 9)).size shouldBe 0
+  }
 
 }
 
@@ -116,7 +143,7 @@ class ConductorHttpTest extends UnitSpec with ScalatestRouteTest with ConductorS
 
       postRequest ~> route ~> check {
         conductor.getAllPartitions() should contain ("part4")
-        conductor.getPriorityPartitions() shouldBe List("part3")
+        conductor.getPriorityPartitions(LocalDateTime.now()) shouldBe List("part3")
     }
   }
 
